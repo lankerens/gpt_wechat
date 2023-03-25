@@ -86,7 +86,6 @@ public class GPTAPI {
 
     static Map<String, List<ChatMessage>> map = new HashMap<>();
 
-
     public static String sendMsg4(String msg, String fromUserName) {
         String url = "https://api.openai.com/v1/chat/completions";
         var okHttpClient = new OkHttpClient.Builder()
@@ -102,9 +101,9 @@ public class GPTAPI {
         map.put(fromUserName, who);
 
 
-        var gptParameter = new GPTParameter().setModel("gpt-3.5-turbo").setMessages(who).setMax_tokens(2048);
+        var gptParameter = new GPTParameter().setModel("gpt-3.5-turbo").setMessages(who).setMax_tokens(3500);
         String json = JSONUtil.toJsonStr(gptParameter);
-        log.warn("{}", json);
+        log.warn("请求: {}", json);
         RequestBody body = RequestBody.create(json, MediaType.parse("application/json;charset=utf8"));
 
         Request request = new Request.Builder()
@@ -118,9 +117,8 @@ public class GPTAPI {
             var respJson = resp.body().string();
             var gptReply = JSONUtil.toBean(respJson, ChatReply.class);
 
-//            log.warn("respJson == {}", respJson);
-            log.warn("gptReply == {}", gptReply.getChoices()[0].getMessage().getContent());
-
+//            log.warn("gptReply == {}", respJson);
+            log.warn("getContent == {}", gptReply.getChoices()[0].getMessage().getContent());
             return gptReply.getChoices()[0].getMessage().getContent();
         } catch (Exception e) {
             log.error("调用GPT出错 == {}", e.getMessage());
@@ -129,12 +127,13 @@ public class GPTAPI {
     }
 
 
-//    public static void main(String[] args) throws InterruptedException {
-//        // 运行时走代理
+    public static void main(String[] args) throws InterruptedException {
+        // 运行时走代理
 //        System.out.printf("", sendMsg4("可以写一个Rust版的hello word 吗", "lankerens"));
 //        Thread.sleep(1000);
 //        System.out.printf("", sendMsg4("可以写一个lua版的hello word 吗", "lankerens"));
-////        System.out.printf("", sendMsg4("写一段七言绝句诗，题目是：火锅！",  "lankerens"));
-//    }
+        System.out.printf("", sendMsg4("什么是 starrocks", "lankerens"));
+//        System.out.printf("", sendMsg4("写一段七言绝句诗，题目是：火锅！",  "lankerens"));
+    }
 
 }

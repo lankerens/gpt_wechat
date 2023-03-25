@@ -19,10 +19,11 @@ import java.util.*;
 @Slf4j
 public class WeChatController {
 
-    private static final String TOKEN = "weixinToken";
+    private static final String TOKEN = "weixinTOKEN";
 
     private static Map<String, Integer> map = new HashMap<>(8);
-
+    private static Set<String> set = new HashSet<>();
+    private static Map<String, String> ansMap = new HashMap<>(8);
 
     /**
      * 校验
@@ -52,8 +53,6 @@ public class WeChatController {
     }
 
 
-
-    static Set<String> set = new HashSet<>();
     /**
      * 返回 xml 数据
      *
@@ -63,27 +62,45 @@ public class WeChatController {
     @PostMapping(produces = "application/xml;charset=UTF-8")
     public MessageReply messageHandler(@RequestBody MessageXml mxm) {
         log.warn("接收: {}", mxm.toString());
-        if(set.contains(mxm.getMsgId()))  {
+        var key = "fuck" + mxm.getMsgId().substring(mxm.getMsgId().length() - 3);
+        log.warn("{}", key);
+        if (set.contains(mxm.getMsgId())) {
+            var ans = "is Typing o.0 \n稍等一小段时间后输入命令获取回复: " + key;
+            var temp = ansMap.getOrDefault(key+mxm.getFromUserName(), null);
+            if (temp != null) ans = temp;
             return new MessageReply(mxm.getFromUserName(), mxm.getToUserName(),
-                    LocalDateTime.now().toEpochSecond(ZoneOffset.UTC), "text", "is Typing o.0");
+                    LocalDateTime.now().toEpochSecond(ZoneOffset.UTC), "text", ans);
         } else {
-            var cnt = map.getOrDefault(mxm.getFromUserName(), 0);
-            map.put(mxm.getFromUserName(), cnt + 1);
-            set.add(mxm.getMsgId());
+            var ans = "今天额度已经用完，一天只有50次调用机会";
 
-            if (cnt > 49) {
-                return new MessageReply(mxm.getFromUserName(), mxm.getToUserName(),
-                        LocalDateTime.now().toEpochSecond(ZoneOffset.UTC), "text", "今天额度已经用完，一天只有50次调用机会");
+            if (mxm.getContent().startsWith("fuck")) {
+                ans = getAns(mxm.getContent() + mxm.getFromUserName());
             } else {
-                //       var ans = ChatGPT.sendMsg(mxm.getContent(), mxm.getFromUserName());
-                var ans = GPTAPI.sendMsg4(mxm.getContent(), mxm.getFromUserName());
+                // 计数
+                var cnt = map.getOrDefault(mxm.getFromUserName(), 0);
+                map.put(mxm.getFromUserName(), cnt + 1);
+                //过滤 5s 重复请求
+                set.add(mxm.getMsgId());
 
-                return new MessageReply(mxm.getFromUserName(), mxm.getToUserName(),
-                        LocalDateTime.now().toEpochSecond(ZoneOffset.UTC), "text", ans);
+                if (cnt < 50) {
+                    //       var ans = ChatGPT.sendMsg(mxm.getContent(), mxm.getFromUserName());
+                    ans = GPTAPI.sendMsg4(mxm.getContent(), mxm.getFromUserName());
+                    ansMap.put(key + mxm.getFromUserName(), ans);
+                }
             }
+
+            return new MessageReply(mxm.getFromUserName(), mxm.getToUserName(),
+                    LocalDateTime.now().toEpochSecond(ZoneOffset.UTC), "text", ans);
         }
     }
 
+
+    private String getAns(String key) {
+        log.warn("{}", ansMap.keySet());
+//        var ans = ansMap.getOrDefault(key, "none");
+        String ans = "";
+        return (ans = ansMap.remove(key)) == null ? "none": ans ;
+    }
 
     @Scheduled(cron = "0/5 * * * * ? ")
     public void scheduled() {
